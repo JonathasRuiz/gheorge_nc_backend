@@ -29,12 +29,28 @@ func (s *EmailService) SendContactEmail(name, email, phone, message string) erro
 	return s.send(s.cfg.ContactForwardTo, subject, body)
 }
 
+func (s *EmailService) SendReplyEmail(to, replyBody string) error {
+	if s.cfg.SMTPUser == "" {
+		return fmt.Errorf("SMTP not configured")
+	}
+
+	subject := "Re: Your contact form message"
+	body := "The business has replied to your message:\n\n" + replyBody
+
+	return s.send(to, subject, body)
+}
+
 func (s *EmailService) send(to, subject, body string) error {
 	addr := s.cfg.SMTPHost + ":" + s.cfg.SMTPPort
 	auth := smtp.PlainAuth("", s.cfg.SMTPUser, s.cfg.SMTPPassword, s.cfg.SMTPHost)
 
+	from := s.cfg.SMTPFrom
+	if from == "" {
+		from = s.cfg.SMTPUser
+	}
+
 	msg := []byte(
-		"From: " + s.cfg.SMTPUser + "\r\n" +
+		"From: " + from + "\r\n" +
 			"To: " + to + "\r\n" +
 			"Subject: " + subject + "\r\n" +
 			"MIME-Version: 1.0\r\n" +
@@ -43,5 +59,5 @@ func (s *EmailService) send(to, subject, body string) error {
 			body + "\r\n",
 	)
 
-	return smtp.SendMail(addr, auth, s.cfg.SMTPUser, []string{to}, msg)
+	return smtp.SendMail(addr, auth, from, []string{to}, msg)
 }
